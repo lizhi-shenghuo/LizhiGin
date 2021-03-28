@@ -2,14 +2,15 @@ package v1
 
 import (
 	"LizhiGin/global"
+	"LizhiGin/middleware"
 	"LizhiGin/model"
 	"LizhiGin/model/request"
 	"LizhiGin/model/response"
+	"LizhiGin/service"
 	"LizhiGin/utils"
 	"github.com/dgrijalva/jwt-go"
 	"github.com/gin-gonic/gin"
-	"LizhiGin/middleware"
-	uuid "github.com/satori/go.uuid"
+	"github.com/go-redis/redis"
 	"go.uber.org/zap"
 	"time"
 )
@@ -29,7 +30,7 @@ func Login(c *gin.Context) {
 
 // 登录以后签发jwt
 func tokenNext(c *gin.Context, user model.SysUser) {
-	j := &middleware.JWT{SigningKey: []byte(global.LizhiConfig.JWT.SigningKey)}
+	j := &middleware.JWT{SigningKey: []byte(global.LizhiConfig.JWT.SigningKey)}  // 唯一签名
 	claims := request.CustomClaims{
 		UUID:           user.UUID,
 		ID:             user.ID,
@@ -40,6 +41,7 @@ func tokenNext(c *gin.Context, user model.SysUser) {
 		StandardClaims: jwt.StandardClaims{
 			ExpiresAt: time.Now().Unix() - 1000,
 			NotBefore: time.Now().Unix() + global.LizhiConfig.JWT.ExpiresTime,
+			Issuer: "sunzhou",
 		},
 	}
 	token, err := j.CreateToken(claims)
@@ -48,5 +50,43 @@ func tokenNext(c *gin.Context, user model.SysUser) {
 		response.FailWithMessage("获取token失败",c)
 		return
 	}
-	if !global.LizhiConfig.
+	if !global.LizhiConfig.System.UseMultipoint {
+		response.OkWithDetail(response.LoginResponse{
+			User: user,
+			Token: token,
+			ExpireAt: claims.StandardClaims.ExpiresAt * 1000,
+		}, "登录成功",c)
+		return
+	}
+	if jwtStr, err := service.GetRedisJWT(user.Username); err == redis.Nil {
+		if err := service.SetRedisJWT(token, user.Username); err != nil {
+			global.LizhiLog.Error("设置登录状态失败", zap.Any("err", err))
+			response.FailWithMessage("设置登录状态失败",c)
+			return
+		}
+		response.OkWithDetail(response.LoginResponse{
+			User:     user,
+			Token:    token,
+			ExpireAt: claims.StandardClaims.ExpiresAt * 1000,
+		}, "登录成功", c)
+	} else if err != nil {
+		global.LizhiLog.Error("设置登录状态失败", zap.Any("err", err))
+		response.FailWithMessage("设置登录状态失败", c)
+	} else {
+		var blackJWT model.JwtBlacklist
+		blackJWT.Jwt = jwtStr
+		if err := service.JsonInBlacklist(blackJWT); err != nil {
+			response.FailWithMessage("jwt拉黑失败", c)
+			return
+		}
+		if err := service.SetRedisJWT(token, user.Username); err != nil {
+			response.FailWithMessage("设置登录状态失败", c)
+			return
+		}
+		response.OkWithDetail(response.LoginResponse{
+			User:     user,
+			Token:    token,
+			ExpireAt: claims.StandardClaims.ExpiresAt * 1000,
+		}, "登录成功", c)
+	}
 }

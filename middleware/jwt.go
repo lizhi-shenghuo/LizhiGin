@@ -46,7 +46,13 @@ func NewJWT() *JWT {
 }
 
 // 创建一个token
-func (j *JWT) CreateToken(tokenString string) (*request.CustomClaims, error) {
+func (j *JWT) CreateToken(claims request.CustomClaims) (string, error) {
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	return token.SignedString(j.SigningKey)
+}
+
+// 创建一个token
+func (j *JWT) ParseToken(tokenString string) (*request.CustomClaims, error) {
 	token, err := jwt.ParseWithClaims(tokenString, &request.CustomClaims{}, func(token *jwt.Token) (interface{}, error) {
 		return j.SigningKey, nil
 	})

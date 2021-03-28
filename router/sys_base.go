@@ -6,6 +6,10 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func InitBaseRouter(r *gin.RouterGroup) *gin.IRouter {
-	BaseRouter := r.Group("base").Use(middleware.)
+func InitBaseRouter(r *gin.RouterGroup) gin.IRoutes {
+	BaseRouter := r.Group("base").Use(middleware.NeedInit())
+	{
+		BaseRouter.POST("login", v1.Login)
+	}
+	return BaseRouter
 }
