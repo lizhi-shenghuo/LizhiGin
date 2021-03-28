@@ -12,6 +12,7 @@ require (
 	github.com/satori/go.uuid v1.2.0
 	github.com/spf13/viper v1.7.1
 	github.com/stretchr/testify v1.7.0 // indirect
+	github.com/swaggo/gin-swagger v1.3.0
 	go.uber.org/zap v1.16.0
 	gorm.io/gorm v1.21.6
 )

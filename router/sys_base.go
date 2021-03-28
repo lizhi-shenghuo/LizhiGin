@@ -13,3 +13,4 @@ func InitBaseRouter(r *gin.RouterGroup) gin.IRoutes {
 	}
 	return BaseRouter
 }
+
