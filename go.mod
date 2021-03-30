@@ -14,5 +14,6 @@ require (
 	github.com/stretchr/testify v1.7.0 // indirect
 	github.com/swaggo/gin-swagger v1.3.0
 	go.uber.org/zap v1.16.0
+	gorm.io/driver/mysql v1.0.5
 	gorm.io/gorm v1.21.6
 )
